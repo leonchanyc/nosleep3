@@ -1,0 +1,211 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>No Sleep</title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta property="og:title" content="">
+  <meta property="og:type" content="">
+  <meta property="og:url" content="">
+  <meta property="og:image" content="">
+  <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😴</text></svg>">
+  <meta name="theme-color" content="#fafafa">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma-switch@2.0.4/dist/css/bulma-switch.min.css">
+  <style>
+    /* Dark mode styles when enabled */
+    body.dark-mode {
+      background-color: #1a1a2e;
+      color: #eaeaea;
+    }
+    body.dark-mode .hero.is-light {
+      background-color: #1a1a2e;
+      color: #eaeaea;
+    }
+    body.dark-mode .card {
+      background-color: #16213e;
+      color: #eaeaea;
+      box-shadow: 0 .5em 1em -.125em rgba(0,0,0,.3);
+    }
+    body.dark-mode .card-header {
+      box-shadow: 0 .125em .25em rgba(0,0,0,.2);
+    }
+    body.dark-mode .card-header-title {
+      color: #eaeaea;
+    }
+    body.dark-mode .card-footer {
+      border-top-color: #0f3460;
+    }
+    body.dark-mode .card-footer-item {
+      border-right: none;
+    }
+    body.dark-mode .label {
+      color: #eaeaea;
+    }
+    body.dark-mode .input,
+    body.dark-mode .textarea {
+      background-color: #0f3460;
+      border-color: #0f3460;
+      color: #eaeaea;
+    }
+    body.dark-mode .input::placeholder,
+    body.dark-mode .textarea::placeholder {
+      color: rgba(234,234,234,0.5);
+    }
+  </style>
+</head>
+<body>
+  <section id="hero" class="hero is-light" style="min-height:100vh">
+    <div class="columns hero-body is-centered">
+      <div class="column is-half-desktop is-one-third-fullhd is-one-third-widescreen is-two-thirds-tablet">
+        <div class="card">
+          <header class="card-header">
+            <p class="card-header-title">No Sleep</p>
+          </header>
+          <div class="card-content">
+            <div class="field">
+              <label class="label">Why stay awake?</label>
+              <div class="control">
+                <textarea id="reasonInput" class="textarea is-large" rows="3" placeholder=""></textarea>
+              </div>
+            </div>
+          </div>
+          <footer class="card-footer" style="flex-direction:column;">
+            <div class="card-footer-item">
+              <button id="fullscreenBtn" class="button is-dark is-rounded">
+                <span>Fullscreen Mode</span>
+              </button>
+            </div>
+            <div class="card-footer-item field">
+              <input id="preventSleepSwitch" type="checkbox" class="is-large is-rounded is-success switch">
+              <label for="preventSleepSwitch">Prevent device sleeping</label>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="warning-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-content">
+      <div class="notification is-warning">
+        This site can only prevent your device sleeping if it's in a foreground tab.<br>
+        It doesn't need to be <em>visible</em>, but you can't minimise or switch to a different tab within this window.
+      </div>
+    </div>
+    <button class="modal-close is-large" aria-label="close"></button>
+  </div>
+
+  <!-- Fullscreen overlay -->
+  <div id="fullscreen-overlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:#000; z-index:9999; cursor:pointer;">
+    <div style="display:flex; align-items:flex-start; justify-content:flex-start; height:100%; padding:2rem;">
+      <p id="fullscreen-reason" style="color:#ffdd00; font-size:1.5rem; text-align:left; max-width:80%; word-wrap:break-word; white-space:pre-wrap;"></p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
+  <script>
+    var noSleep = new NoSleep();
+
+    function updateUI() {
+      let isEnabled = noSleep.isEnabled;
+      if (noSleep._wakeLock) {
+        isEnabled = !noSleep._wakeLock.released;
+      }
+      
+      if (isEnabled) {
+        console.log("noSleep is enabled");
+        document.getElementById("preventSleepSwitch").checked = true;
+        document.getElementById("hero").classList.add("is-success");
+        document.body.classList.add("dark-mode");
+        document.getElementById("favicon").setAttribute("href", 
+          "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>☕️</text></svg>");
+      } else {
+        console.log("noSleep is disabled");
+        document.getElementById("preventSleepSwitch").checked = false;
+        document.getElementById("hero").classList.remove("is-success");
+        document.body.classList.remove("dark-mode");
+        document.getElementById("favicon").setAttribute("href", 
+          "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😴</text></svg>");
+      }
+    }
+
+    document.getElementById("preventSleepSwitch").addEventListener("click", function(e) {
+      if (e.target.checked) {
+        noSleep.enable().then(updateUI);
+      } else {
+        noSleep.disable();
+        updateUI();
+      }
+    });
+
+    document.addEventListener("visibilitychange", function() {
+      if (noSleep._wakeLock && noSleep._wakeLock.released) {
+        document.getElementById("warning-modal").classList.add("is-active");
+      }
+    });
+
+    // Modal close handlers
+    document.querySelectorAll(".modal-background, .modal-close").forEach(function(el) {
+      el.addEventListener("click", function() {
+        document.getElementById("warning-modal").classList.remove("is-active");
+      });
+    });
+
+    document.addEventListener("keydown", function(e) {
+      if (e.keyCode === 27) {
+        document.getElementById("warning-modal").classList.remove("is-active");
+      }
+    });
+
+    // Auto-enable on load
+    noSleep.enable().then(updateUI);
+
+    // Fullscreen mode
+    var fullscreenOverlay = document.getElementById("fullscreen-overlay");
+    var fullscreenReason = document.getElementById("fullscreen-reason");
+    var fullscreenBtn = document.getElementById("fullscreenBtn");
+
+    fullscreenBtn.addEventListener("click", function() {
+      var reason = document.getElementById("reasonInput").value || "";
+      fullscreenReason.textContent = reason;
+      fullscreenOverlay.style.display = "block";
+      
+      // Request browser fullscreen
+      if (fullscreenOverlay.requestFullscreen) {
+        fullscreenOverlay.requestFullscreen();
+      } else if (fullscreenOverlay.webkitRequestFullscreen) {
+        fullscreenOverlay.webkitRequestFullscreen();
+      } else if (fullscreenOverlay.msRequestFullscreen) {
+        fullscreenOverlay.msRequestFullscreen();
+      }
+    });
+
+    // Exit fullscreen on click
+    fullscreenOverlay.addEventListener("click", function() {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      fullscreenOverlay.style.display = "none";
+    });
+
+    // Handle ESC key or fullscreen exit
+    document.addEventListener("fullscreenchange", function() {
+      if (!document.fullscreenElement) {
+        fullscreenOverlay.style.display = "none";
+      }
+    });
+    document.addEventListener("webkitfullscreenchange", function() {
+      if (!document.webkitFullscreenElement) {
+        fullscreenOverlay.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>
